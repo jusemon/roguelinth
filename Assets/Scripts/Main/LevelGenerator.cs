@@ -2,6 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 public class LevelGenerator : MonoBehaviour
 {
 
@@ -9,11 +13,14 @@ public class LevelGenerator : MonoBehaviour
     GameObject sectionBase;
 
     [SerializeField]
-    [Min(8)]
-    int numberOfRooms = 9;
+    float distance = 10f;
 
     [SerializeField]
-    float distance = 10f;
+    public bool randomRooms = true;
+
+    [HideInInspector]
+    [Range(6, 9)]
+    public int numberOfRooms = 9;
 
     private List<GameObject> rooms;
 
@@ -25,8 +32,9 @@ public class LevelGenerator : MonoBehaviour
 
     private void CreateLevel()
     {
-        rooms = new List<GameObject>(numberOfRooms);
-        for (int index = 0; index < numberOfRooms; index++)
+        var roomsCount = randomRooms ? Random.Range(6, 10) : numberOfRooms;
+        rooms = new List<GameObject>(roomsCount);
+        for (int index = 0; index < roomsCount; index++)
         {
             bool isInitial = false, isFinal = false;
             Vector3? currentDirection;
@@ -49,7 +57,7 @@ public class LevelGenerator : MonoBehaviour
 
                 UpdateRoom(index - 1, currentDirection.Value);
 
-                if (index == (numberOfRooms - 1))
+                if (index == (roomsCount - 1))
                 {
                     isFinal = true;
                 }
@@ -141,3 +149,21 @@ public class LevelGenerator : MonoBehaviour
 
     }
 }
+
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(LevelGenerator))]
+public class LevelGenerator_Editor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        DrawDefaultInspector(); // for other non-HideInInspector fields
+        LevelGenerator script = (LevelGenerator)target;
+        if (!script.randomRooms) // if bool is true, show other fields
+        {
+            Debug.Log("Toggled");
+             script.numberOfRooms = EditorGUILayout.IntField("Number of Rooms", script.numberOfRooms);
+        }
+    }
+}
+#endif
