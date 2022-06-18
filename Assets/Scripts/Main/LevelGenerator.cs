@@ -36,34 +36,46 @@ public class LevelGenerator : MonoBehaviour
         rooms = new List<GameObject>(roomsCount);
         for (int index = 0; index < roomsCount; index++)
         {
+            Debug.Log($"> index {index}");
             bool isInitial = false, isFinal = false;
             Vector3? currentDirection;
             Vector3? previousDirection;
             var position = CalculatePosition(rooms, index, out currentDirection);
-            previousDirection = Direction.Reverse(currentDirection.GetValueOrDefault());
-            // Initial level
-            if (index == 0)
+            // We are stuck, probably an espiral
+            if (!currentDirection.HasValue)
             {
-                previousDirection = null;
-                isInitial = true;
+                // Delete at least 5 rooms and try again
+                var roomsToRemove = index > 5 ? 5 : index;
+                var limit = index - roomsToRemove - 1;
+                for (int backwardIndex = index - 1; backwardIndex > limit; backwardIndex--)
+                {
+                    Debug.Log($"> backwardindex {backwardIndex}");
+                    DeleteRoom(backwardIndex);
+                }
+                index = limit;
+                continue;
             }
             else
             {
-                if (!currentDirection.HasValue)
+                // Initial level
+                if (index == 0)
                 {
-                    UpdateRoom(index - 1, true);
-                    break;
+                    previousDirection = null;
+                    isInitial = true;
                 }
-
-                UpdateRoom(index - 1, currentDirection.Value);
-
-                if (index == (roomsCount - 1))
+                else
                 {
-                    isFinal = true;
+                    UpdateRoom(index - 1, currentDirection.Value);
+
+                    if (index == (roomsCount - 1))
+                    {
+                        isFinal = true;
+                    }
                 }
             }
 
-            var room = CreateRoom(position, previousDirection, isInitial, isFinal, index);
+            previousDirection = Direction.Reverse(currentDirection.GetValueOrDefault());
+            var room = CreateRoom(index, position, previousDirection, isInitial, isFinal);
             previousDirection = currentDirection;
             rooms.Add(room);
             if (isFinal)
@@ -86,12 +98,21 @@ public class LevelGenerator : MonoBehaviour
 
     private Vector3? CalculateDirection(List<GameObject> map, int index, int tries = 5)
     {
+        var currentDirection = Direction.GetRandom();
         if (tries == 0)
         {
-            return null;
+            var positions = Direction.All.ToDictionary(key => key, value => map[index - 1].transform.position + value * distance);
+            var validPos = positions.Where(pos => !map.Select(room => room.transform.position).Contains(pos.Value)).ToArray();
+            if (validPos.Length > 0)
+            {
+                currentDirection = validPos[0].Key;
+            }
+            else
+            {
+                return null;
+            }
         }
 
-        var currentDirection = Direction.GetRandom();
         if (index > 0)
         {
             var position = map[index - 1].transform.position + currentDirection * distance;
@@ -103,44 +124,42 @@ public class LevelGenerator : MonoBehaviour
         return currentDirection;
     }
 
-    private GameObject CreateRoom(Vector3 position, Vector3? prevDirection, bool isInitial, bool isFinal, int index)
+    private GameObject CreateRoom(int index, Vector3 position, Vector3? prevDirection, bool isInitial, bool isFinal)
     {
-        Debug.Log($"Creating Room {index + 1}");
+        Debug.Log($"Create Room {index + 1}");
         var room = Instantiate(sectionBase, position, Quaternion.identity, transform);
-        room.name = $"Room {index + 1}";
+        room.name = $"Room {index}";
         var roomManager = room.GetComponent<RoomManager>();
-
-        Debug.Log($"  With: ");
         roomManager.isInitial = isInitial;
         roomManager.isFinal = isFinal;
-        Debug.Log($"    position: {position}");
-        Debug.Log($"    prevDirection: {prevDirection}");
         roomManager.prevDoorDirection = prevDirection;
         return room;
     }
 
     private void UpdateRoom(int index, Vector3 nextDirection)
     {
-        Debug.Log($"Updating Room {index + 1}");
+        Debug.Log($"Update Room {index + 1}");
         var room = rooms[index];
         var roomManager = room.GetComponent<RoomManager>();
-        Debug.Log($"  With: ");
-        Debug.Log($"    nextDirection: {nextDirection}");
         roomManager.nextDoorDirection = nextDirection;
-        Debug.Log($"Proccesing Room {index + 1}");
         roomManager.ProcessRoom();
     }
 
     private void UpdateRoom(int index, bool isFinal)
     {
-        Debug.Log($"Updating Room {index + 1}");
+        Debug.Log($"Update Room {index + 1}");
         var room = rooms[index];
         var roomManager = room.GetComponent<RoomManager>();
-        Debug.Log($"  With: ");
-        Debug.Log($"    isFinal: {isFinal}");
         roomManager.isFinal = isFinal;
-        Debug.Log($"Proccesing Room {index + 1}");
         roomManager.ProcessRoom();
+    }
+
+    private void DeleteRoom(int index)
+    {
+        Debug.Log($"Delete Room {index + 1}");
+        var room = rooms[index];
+        rooms.Remove(room);
+        Destroy(room);
     }
 
     // Update is called once per frame
@@ -162,7 +181,7 @@ public class LevelGenerator_Editor : Editor
         if (!script.randomRooms) // if bool is true, show other fields
         {
             Debug.Log("Toggled");
-             script.numberOfRooms = EditorGUILayout.IntField("Number of Rooms", script.numberOfRooms);
+            script.numberOfRooms = EditorGUILayout.IntField("Number of Rooms", script.numberOfRooms);
         }
     }
 }

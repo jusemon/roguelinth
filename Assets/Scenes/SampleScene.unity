@@ -331,8 +331,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sectionBase: {fileID: 438057770868068639, guid: ce718a8bbf1b951418405066ec40fe4d, type: 3}
-  numberOfRooms: 6
   distance: 10
+  randomRooms: 0
+  numberOfRooms: 50
 --- !u!4 &1356077361
 Transform:
   m_ObjectHideFlags: 0
