@@ -33,6 +33,7 @@ public class LevelGenerator : MonoBehaviour
     private void CreateLevel()
     {
         var roomsCount = randomRooms ? Random.Range(6, 10) : numberOfRooms;
+        var tries = 0;
         rooms = new List<GameObject>(roomsCount);
         for (int index = 0; index < roomsCount; index++)
         {
@@ -41,11 +42,13 @@ public class LevelGenerator : MonoBehaviour
             Vector3? currentDirection;
             Vector3? previousDirection;
             var position = CalculatePosition(rooms, index, out currentDirection);
+            previousDirection = Direction.Reverse(currentDirection.GetValueOrDefault());
             // We are stuck, probably an espiral
             if (!currentDirection.HasValue)
             {
                 // Delete at least 5 rooms and try again
-                var roomsToRemove = index > 5 ? 5 : index;
+                var roomsToRemove = 5 + tries / 2;
+                roomsToRemove = index > roomsToRemove ? roomsToRemove : index;
                 var limit = index - roomsToRemove - 1;
                 for (int backwardIndex = index - 1; backwardIndex > limit; backwardIndex--)
                 {
@@ -53,6 +56,8 @@ public class LevelGenerator : MonoBehaviour
                     DeleteRoom(backwardIndex);
                 }
                 index = limit;
+                tries++;
+                Debug.Log($"> tries {tries}");
                 continue;
             }
             else
@@ -74,7 +79,6 @@ public class LevelGenerator : MonoBehaviour
                 }
             }
 
-            previousDirection = Direction.Reverse(currentDirection.GetValueOrDefault());
             var room = CreateRoom(index, position, previousDirection, isInitial, isFinal);
             previousDirection = currentDirection;
             rooms.Add(room);
